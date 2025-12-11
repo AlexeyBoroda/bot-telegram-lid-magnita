@@ -1,6 +1,7 @@
 # bot_polling.py
 # Telegram-бот "Антиблокировка" (polling-режим + запуск через cron)
 
+import os
 import time
 import traceback
 
@@ -19,10 +20,35 @@ from telegram.ext import (
 
 from config import BOT_TOKEN, CHANNEL_ID, get_lead_file_path
 from config import FREE_URL, BASE_URL, PRO_URL
-from storage import update_user, log_event, load_users
+from storage import (
+    update_user,
+    log_event,
+    load_users,
+    get_cached_subscription,
+    cache_subscription_status,
+)
 
 
 # --- Вспомогательные функции ---
+
+def _ts():
+    return time.strftime("%Y-%m-%dT%H:%M:%S")
+
+
+def check_config():
+    """
+    Быстрая проверка критичных настроек, чтобы не гонять бота без токена/канала.
+    """
+    missing = []
+    if not BOT_TOKEN:
+        missing.append("BOT_TOKEN")
+    if not CHANNEL_ID:
+        missing.append("CHANNEL_ID")
+    if missing:
+        print(f"[{_ts()}] Ошибка конфигурации: отсутствуют {', '.join(missing)}")
+        return False
+    return True
+
 
 def parse_start_param(param: str):
     """
@@ -123,14 +149,19 @@ def check_subscription(update: Update, context: CallbackContext):
     user = query.from_user
     query.answer()
 
-    # Проверяем подписку
-    is_member = False
-    try:
-        member = context.bot.get_chat_member(CHANNEL_ID, user.id)
-        if member.status in ("member", "administrator", "creator"):
-            is_member = True
-    except Exception:
+    # Проверяем подписку с учётом кэша (30 минут)
+    cached = get_cached_subscription(user.id)
+    if cached is not None:
+        is_member = cached
+    else:
         is_member = False
+        try:
+            member = context.bot.get_chat_member(CHANNEL_ID, user.id)
+            if member.status in ("member", "administrator", "creator"):
+                is_member = True
+        except Exception:
+            is_member = False
+        cache_subscription_status(user.id, is_member)
 
     if not is_member:
         # Не подписан — снова даём кнопки
@@ -271,8 +302,7 @@ def button_click_logger(update: Update, context: CallbackContext):
 
 
 def main():
-    if not BOT_TOKEN:
-        print("BOT_TOKEN пустой. Заполни .env и перезапусти.")
+    if not check_config():
         return
 
     updater = Updater(BOT_TOKEN, use_context=True)

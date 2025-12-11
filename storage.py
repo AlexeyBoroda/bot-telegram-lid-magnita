@@ -3,13 +3,14 @@
 
 import os
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from config import DATA_DIR, LOGS_DIR
 
 
 USERS_FILE = os.path.join(DATA_DIR, "users.json")
 EVENTS_FILE = os.path.join(LOGS_DIR, "events.csv")
+SUB_CACHE_TTL_SEC = 1800  # 30 минут
 
 
 def _ensure_files():
@@ -103,6 +104,41 @@ def update_user(
 
     users[key] = data
     save_users(users)
+
+
+def cache_subscription_status(user_id: int, is_member: bool, ttl_seconds: int = SUB_CACHE_TTL_SEC):
+    """
+    Сохраняет статус подписки и время кэширования.
+    """
+    users = load_users()
+    key = str(user_id)
+    data = users.get(key, {})
+    data["_sub_status"] = bool(is_member)
+    data["_sub_cached_at"] = datetime.now().isoformat()
+    data["_sub_ttl"] = int(ttl_seconds)
+    users[key] = data
+    save_users(users)
+
+
+def get_cached_subscription(user_id: int):
+    """
+    Возвращает кэшированный статус подписки (True/False) или None, если нет
+    валидного кэша.
+    """
+    users = load_users()
+    data = users.get(str(user_id), {})
+    status = data.get("_sub_status")
+    cached_at = data.get("_sub_cached_at")
+    ttl = int(data.get("_sub_ttl", SUB_CACHE_TTL_SEC) or SUB_CACHE_TTL_SEC)
+    if status is None or cached_at is None:
+        return None
+    try:
+        ts = datetime.fromisoformat(cached_at)
+    except Exception:
+        return None
+    if datetime.now() - ts > timedelta(seconds=ttl):
+        return None
+    return bool(status)
 
 
 def log_event(

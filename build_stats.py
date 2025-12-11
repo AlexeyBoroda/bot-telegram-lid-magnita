@@ -7,48 +7,80 @@ from collections import defaultdict
 from datetime import datetime
 
 from config import STATS_DIR
-from utils import read_events, read_users
+from utils import read_events, read_users, safe_load_json
 
 
 STATS_FILE = os.path.join(STATS_DIR, "stats.json")
+DEFAULT_META = {
+    "processed_events": 0,
+    "events_by_day": {},
+    "leads_by_day": {},
+    "by_platform_events": {},
+    "by_theme_events": {},
+    "by_lead_type_events": {},
+    "by_creative_events": {},
+    "by_platform_users": {},
+    "by_theme_users": {},
+    "by_lead_type_users": {},
+    "by_creative_users": {},
+    "creative_users_full_key": {},
+    "leads_by_theme_users": {},
+    "all_users": [],
+    "users_with_lead": [],
+}
+
+
+def _as_set_dict(value):
+    return {k: set(v) for k, v in (value or {}).items()}
+
+
+def _load_prev_meta():
+    data = safe_load_json(STATS_FILE, {})
+    if not isinstance(data, dict):
+        return DEFAULT_META.copy()
+    meta = data.get("meta", {}) or {}
+    merged = DEFAULT_META.copy()
+    merged.update(meta)
+    return merged
 
 
 def build_stats():
-    events = read_events()
+    prev_meta = _load_prev_meta()
+    processed_before = max(int(prev_meta.get("processed_events", 0) or 0), 0)
+
+    events, total_rows = read_events(skip_rows=processed_before)
     users = read_users()
 
-    # --- Базовые счётчики ---
+    # Если файл урезан/пересоздан — начинаем с нуля
+    if processed_before > total_rows:
+        processed_before = 0
+        events, total_rows = read_events(skip_rows=0)
 
-    total_events = len(events)
+    # --- Базовые структуры, подхватываем прошлые значения ---
+    events_by_day = defaultdict(int, prev_meta.get("events_by_day", {}))
+    leads_by_day = defaultdict(int, prev_meta.get("leads_by_day", {}))
 
-    # Уникальные пользователи
-    all_users = set()
-    users_with_lead = set()
+    by_platform_events = defaultdict(int, prev_meta.get("by_platform_events", {}))
+    by_theme_events = defaultdict(int, prev_meta.get("by_theme_events", {}))
+    by_lead_type_events = defaultdict(int, prev_meta.get("by_lead_type_events", {}))
+    by_creative_events = defaultdict(int, prev_meta.get("by_creative_events", {}))
 
-    # Для динамики по дням
-    events_by_day = defaultdict(int)
-    leads_by_day = defaultdict(int)
+    by_platform_users = _as_set_dict(prev_meta.get("by_platform_users"))
+    by_theme_users = _as_set_dict(prev_meta.get("by_theme_users"))
+    by_lead_type_users = _as_set_dict(prev_meta.get("by_lead_type_users"))
+    by_creative_users = _as_set_dict(prev_meta.get("by_creative_users"))
 
-    # Структура по платформам / темам / типам / креативам
-    by_platform_events = defaultdict(int)
-    by_platform_users = defaultdict(set)
+    creative_users_full_key = _as_set_dict(prev_meta.get("creative_users_full_key"))
+    leads_by_theme_users = _as_set_dict(prev_meta.get("leads_by_theme_users"))
 
-    by_theme_events = defaultdict(int)
-    by_theme_users = defaultdict(set)
+    all_users = set(prev_meta.get("all_users", []))
+    users_with_lead = set(prev_meta.get("users_with_lead", []))
 
-    by_lead_type_events = defaultdict(int)
-    by_lead_type_users = defaultdict(set)
+    total_events = processed_before
 
-    by_creative_events = defaultdict(int)
-    by_creative_users = defaultdict(set)
-
-    # Какие креативы приводят больше уникальных людей
-    creative_users_full_key = defaultdict(set)  # ключ: THx_TT_NN
-
-    # Какая тема даёт больше лидов на пользователя
-    leads_by_theme_users = defaultdict(set)
-
+    # --- Обрабатываем только новые события ---
     for ev in events:
+        total_events += 1
         user_id = ev["user_id"]
         event = ev["event"]
         platform = ev["platform"] or ""
@@ -60,13 +92,10 @@ def build_stats():
         all_users.add(user_id)
 
         # Парс даты (день)
-        day = None
         try:
-            # isoformat
-            dt = datetime.fromisoformat(ts)
-            day = dt.date().isoformat()
+            day = datetime.fromisoformat(ts).date().isoformat()
         except Exception:
-            pass
+            day = None
 
         if day:
             events_by_day[day] += 1
@@ -102,7 +131,6 @@ def build_stats():
                 key_full = f"{theme}_{lead_type}_{creative}"
                 creative_users_full_key[key_full].add(user_id)
 
-    # Преобразуем множества в числа
     def convert_counts(events_dict, users_dict):
         out = []
         for k in sorted(events_dict.keys()):
@@ -141,7 +169,28 @@ def build_stats():
         "leads_by_theme_users": {
             theme: len(u_set) for theme, u_set in leads_by_theme_users.items()
         },
-        "users_raw": users,  # для доп. анализа на дашборде при желании
+        "users_raw": users,
+        "meta": {
+            "processed_events": total_rows,
+            "events_by_day": dict(events_by_day),
+            "leads_by_day": dict(leads_by_day),
+            "by_platform_events": dict(by_platform_events),
+            "by_theme_events": dict(by_theme_events),
+            "by_lead_type_events": dict(by_lead_type_events),
+            "by_creative_events": dict(by_creative_events),
+            "by_platform_users": {k: list(v) for k, v in by_platform_users.items()},
+            "by_theme_users": {k: list(v) for k, v in by_theme_users.items()},
+            "by_lead_type_users": {k: list(v) for k, v in by_lead_type_users.items()},
+            "by_creative_users": {k: list(v) for k, v in by_creative_users.items()},
+            "creative_users_full_key": {
+                k: list(v) for k, v in creative_users_full_key.items()
+            },
+            "leads_by_theme_users": {
+                k: list(v) for k, v in leads_by_theme_users.items()
+            },
+            "all_users": list(all_users),
+            "users_with_lead": list(users_with_lead),
+        },
     }
 
     if not os.path.exists(STATS_DIR):
