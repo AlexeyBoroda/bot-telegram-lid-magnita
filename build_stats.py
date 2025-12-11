@@ -65,13 +65,13 @@ def build_stats():
     by_lead_type_events = defaultdict(int, prev_meta.get("by_lead_type_events", {}))
     by_creative_events = defaultdict(int, prev_meta.get("by_creative_events", {}))
 
-    by_platform_users = _as_set_dict(prev_meta.get("by_platform_users"))
-    by_theme_users = _as_set_dict(prev_meta.get("by_theme_users"))
-    by_lead_type_users = _as_set_dict(prev_meta.get("by_lead_type_users"))
-    by_creative_users = _as_set_dict(prev_meta.get("by_creative_users"))
+    by_platform_users = defaultdict(set, _as_set_dict(prev_meta.get("by_platform_users")))
+    by_theme_users = defaultdict(set, _as_set_dict(prev_meta.get("by_theme_users")))
+    by_lead_type_users = defaultdict(set, _as_set_dict(prev_meta.get("by_lead_type_users")))
+    by_creative_users = defaultdict(set, _as_set_dict(prev_meta.get("by_creative_users")))
 
-    creative_users_full_key = _as_set_dict(prev_meta.get("creative_users_full_key"))
-    leads_by_theme_users = _as_set_dict(prev_meta.get("leads_by_theme_users"))
+    creative_users_full_key = defaultdict(set, _as_set_dict(prev_meta.get("creative_users_full_key")))
+    leads_by_theme_users = defaultdict(set, _as_set_dict(prev_meta.get("leads_by_theme_users")))
 
     all_users = set(prev_meta.get("all_users", []))
     users_with_lead = set(prev_meta.get("users_with_lead", []))
