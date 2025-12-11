@@ -1,0 +1,186 @@
+# .gitignore
+# Игнорируемые файлы для репозитория Telegram-бота "Антиблокировка счёта"
+
+# ============ КОНФИДЕНЦИАЛЬНЫЕ ДАННЫЕ ============
+
+# Файл с переменными окружения (токены, пароли)
+.env
+.env.local
+.env.*.local
+
+# Конфигурационные файлы с секретами
+config_secrets.py
+secrets.json
+credentials.json
+
+# Логи с потенциально конфиденциальной информацией
+*.log
+logs/*.log
+cron_*.log
+
+# ============ ПАПКИ С ДАННЫМИ ============
+
+# Папка с данными пользователей (может содержать чувствительную информацию)
+/data/
+!data/.gitkeep  # Можно оставить пустой файл для структуры
+
+# Папка с логами событий
+/logs/
+!logs/.gitkeep
+
+# Папка со статистикой
+/stats/
+!stats/.gitkeep
+
+# Резервные копии данных
+**/*.backup
+**/*_backup_*
+**/*.corrupted
+backups/
+
+# ============ ПАПКИ С ФАЙЛАМИ ЛИД-МАГНИТОВ ============
+
+# Папка с файлами лид-магнитов (PDF, DOCX и т.д.)
+/assets/leads/
+!assets/leads/.gitkeep
+!assets/leads/README.md  # Можно добавить инструкцию
+
+# ============ СИСТЕМНЫЕ ФАЙЛЫ ============
+
+# Файлы операционной системы
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Редакторы и IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ============ PYTHON ============
+
+# Виртуальные окружения
+venv/
+env/
+.venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Кэш Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# celery beat schedule file
+celerybeat-schedule.*
+
+# SageMath parsed files
+*.sage.py
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# Mr Developer
+.mr.developer.cfg
+.project
+.pydevproject
+
+# ============ ТЕМПОВЫЕ ФАЙЛЫ ============
+
+# Временные файлы
+*.tmp
+*.temp
+.tmp/
+temp/
+
+# Файлы блокировок
+*.lock
+.lock
+
+# Индексы для инкрементального обновления
+.stats_index.json
+.stats_meta.json
+
+# Кэш подписок
+subscription_cache.json
+
+# ============ ОПЕРАЦИОННЫЕ СИСТЕМЫ ============
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# Linux
+*~
+
+# ============ ПРОЧЕЕ ============
+
+# Файлы с тестовыми данными
+test_data/
+sample_data/
+
+# Файлы для разработки
+dev_notes.md
+TODO.md
+scratch.*
+
+# Файлы дашборда (если они генерируются)
+dashboard_*.html

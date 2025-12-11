@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Антиблокировка: дашборд по лид-магнитам</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Стиль Borodulin: белый фон, тёмно-синий, красные акценты -->
+  <style>
+    :root {
+      --bg: #ffffff;
+      --text: #002060;
+      --accent: #c00000;
+      --muted: #f2f2f2;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    header {
+      padding: 16px 24px;
+      border-bottom: 2px solid var(--accent);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    header h1 {
+      margin: 0;
+      font-size: 20px;
+    }
+    header .brand {
+      font-size: 12px;
+      text-align: right;
+    }
+    header .brand a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+    main {
+      padding: 16px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+    }
+    .card {
+      background: var(--bg);
+      border-radius: 12px;
+      border: 1px solid #e0e0e0;
+      padding: 16px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
+    }
+    .card h2 {
+      margin: 0 0 12px;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .card h2 .info {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      font-size: 10px;
+      line-height: 14px;
+      text-align: center;
+      cursor: help;
+    }
+    .card .value {
+      font-size: 24px;
+      font-weight: bold;
+    }
+    .pill {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: var(--muted);
+      font-size: 11px;
+      margin-right: 6px;
+      margin-bottom: 4px;
+    }
+    canvas {
+      width: 100%;
+      max-height: 260px;
+    }
+    .table-mini {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    .table-mini th,
+    .table-mini td {
+      border-bottom: 1px solid #e0e0e0;
+      padding: 4px 6px;
+      text-align: left;
+    }
+    .table-mini th {
+      background: var(--muted);
+    }
+    @media (max-width: 600px) {
+      header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+      }
+    }
+  </style>
+
+  <!-- Chart.js с CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <header>
+    <h1>Дашборд лид-магнита «Антиблокировка счёта»</h1>
+    <div class="brand">
+      borodulin.expert<br />
+      <a href="https://t.me/Borodulin_expert" target="_blank">@Borodulin_expert</a>
+    </div>
+  </header>
+
+  <main>
+    <div class="grid">
+      <!-- Карточки summary -->
+      <div class="card">
+        <h2>
+          Итог по пользователям
+          <span class="info" title="Сколько уникальных людей пришли в бота и сколько из них получили хотя бы один лид-магнит.">i</span>
+        </h2>
+        <div class="value" id="summary-users">–</div>
+        <div style="font-size: 12px; margin-top: 6px;">
+          Всего пользователей • Получили лид-магнит: <span id="summary-leads">–</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>
+          События в боте
+          <span class="info" title="Общее количество событий: заходы по ссылкам, выдачи файлов, клики по кнопкам.">i</span>
+        </h2>
+        <div class="value" id="summary-events">–</div>
+        <div style="font-size: 12px; margin-top: 6px;">
+          Используется для оценки общей активности в боте.
+        </div>
+      </div>
+
+      <!-- Платформы -->
+      <div class="card">
+        <h2>
+          По платформам
+          <span class="info" title="Из каких источников трафика приходят пользователи: YouTube, VK, Telegram и др.">i</span>
+        </h2>
+        <div id="platform-pills"></div>
+        <canvas id="chart-platform"></canvas>
+      </div>
+
+      <!-- Темы -->
+      <div class="card">
+        <h2>
+          По темам
+          <span class="info" title="Какая тема шорта/клипа даёт больше активности и уникальных пользователей.">i</span>
+        </h2>
+        <div id="theme-pills"></div>
+        <canvas id="chart-theme"></canvas>
+      </div>
+
+      <!-- Типы лид-магнитов -->
+      <div class="card">
+        <h2>
+          По типам лид-магнитов
+          <span class="info" title="Распределение по формату: чек-листы (CL), мини-гайды (MG), квизы (QZ).">i</span>
+        </h2>
+        <div id="leadtype-pills"></div>
+        <canvas id="chart-leadtype"></canvas>
+      </div>
+
+      <!-- Креативы -->
+      <div class="card">
+        <h2>
+          По креативам
+          <span class="info" title="Какой конкретный креатив (01, 02, 03...) даёт больше событий и уникальных пользователей.">i</span>
+        </h2>
+        <div id="creative-pills"></div>
+        <canvas id="chart-creative"></canvas>
+      </div>
+
+      <!-- Лучшие связки тема+тип+креатив -->
+      <div class="card">
+        <h2>
+          Топ связок THx_TT_NN
+          <span class="info" title="Лучшие комбинации тема+тип+креатив по числу уникальных пользователей (например, TH1_CL_01).">i</span>
+        </h2>
+        <table class="table-mini" id="table-best">
+          <thead>
+            <tr>
+              <th>Ключ</th>
+              <th>Уникальных пользователей</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <!-- Лиды по темам -->
+      <div class="card">
+        <h2>
+          Лиды по темам
+          <span class="info" title="Сколько уникальных людей получило лид-магнит по каждой теме (TH1–TH4).">i</span>
+        </h2>
+        <canvas id="chart-leads-theme"></canvas>
+      </div>
+
+      <!-- Динамика по дням -->
+      <div class="card">
+        <h2>
+          Динамика по дням
+          <span class="info" title="Гистограмма: сколько было событий и выдач лид-магнитов по дням. Помогает видеть пиковые дни.">i</span>
+        </h2>
+        <canvas id="chart-daily"></canvas>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    async function loadStats() {
+      try {
+        const res = await fetch("stats/stats.json?_=" + Date.now());
+        if (!res.ok) {
+          throw new Error("HTTP " + res.status);
+        }
+        const data = await res.json();
+        renderDashboard(data);
+      } catch (e) {
+        console.error("Ошибка загрузки статистики:", e);
+      }
+    }
+
+    function renderDashboard(stats) {
+      const summaryUsers = document.getElementById("summary-users");
+      const summaryLeads = document.getElementById("summary-leads");
+      const summaryEvents = document.getElementById("summary-events");
+
+      const totalUsers = stats.summary?.total_users || 0;
+      const usersWithLead = stats.summary?.users_with_lead || 0;
+      const totalEvents = stats.summary?.total_events || 0;
+
+      summaryUsers.textContent = totalUsers;
+      summaryLeads.textContent = usersWithLead;
+      summaryEvents.textContent = totalEvents;
+
+      // Пиллы и круговые диаграммы
+      renderPillsAndPie(
+        stats.by_platform || [],
+        "platform-pills",
+        "chart-platform",
+        "Платформы"
+      );
+      renderPillsAndPie(
+        stats.by_theme || [],
+        "theme-pills",
+        "chart-theme",
+        "Темы"
+      );
+      renderPillsAndPie(
+        stats.by_lead_type || [],
+        "leadtype-pills",
+        "chart-leadtype",
+        "Типы лид-магнитов"
+      );
+      renderPillsAndPie(
+        stats.by_creative || [],
+        "creative-pills",
+        "chart-creative",
+        "Креативы"
+      );
+
+      // Таблица лучших креативов (THx_TT_NN)
+      const tbody = document.querySelector("#table-best tbody");
+      tbody.innerHTML = "";
+      (stats.best_creatives || []).forEach(row => {
+        const tr = document.createElement("tr");
+        const tdKey = document.createElement("td");
+        const tdUsers = document.createElement("td");
+        tdKey.textContent = row.key;
+        tdUsers.textContent = row.unique_users;
+        tr.appendChild(tdKey);
+        tr.appendChild(tdUsers);
+        tbody.appendChild(tr);
+      });
+
+      // Лиды по темам
+      renderBarChart(
+        "chart-leads-theme",
+        Object.keys(stats.leads_by_theme_users || {}),
+        Object.values(stats.leads_by_theme_users || {}),
+        "Уникальных пользователей с лид-магнитом по теме"
+      );
+
+      // Динамика по дням
+      const days = Object.keys(stats.events_by_day || {}).sort();
+      const events = days.map(d => stats.events_by_day[d] || 0);
+      const leads = days.map(d => (stats.leads_by_day || {})[d] || 0);
+
+      const ctxDaily = document.getElementById("chart-daily").getContext("2d");
+      new Chart(ctxDaily, {
+        type: "bar",
+        data: {
+          labels: days,
+          datasets: [
+            {
+              label: "Все события",
+              data: events,
+              backgroundColor: "rgba(0, 32, 96, 0.6)"
+            },
+            {
+              label: "Выдача лид-магнитов",
+              data: leads,
+              backgroundColor: "rgba(192, 0, 0, 0.6)"
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { stacked: false },
+            y: { beginAtZero: true }
+          }
+        }
+      });
+    }
+
+    function renderPillsAndPie(list, pillsId, chartId, label) {
+      const pillsContainer = document.getElementById(pillsId);
+      pillsContainer.innerHTML = "";
+
+      const labels = [];
+      const valuesUsers = [];
+
+      list.forEach(item => {
+        const key = item.key || "–";
+        const unique_users = item.unique_users || 0;
+        const events = item.events || 0;
+
+        labels.push(key);
+        valuesUsers.push(unique_users);
+
+        const pill = document.createElement("span");
+        pill.className = "pill";
+        pill.textContent = `${key}: ${unique_users} юз., ${events} соб.`;
+        pillsContainer.appendChild(pill);
+      });
+
+      if (!labels.length) {
+        return;
+      }
+
+      const ctx = document.getElementById(chartId).getContext("2d");
+      new Chart(ctx, {
+        type: "pie",
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: label,
+              data: valuesUsers,
+              backgroundColor: [
+                "rgba(0, 32, 96, 0.8)",
+                "rgba(192, 0, 0, 0.8)",
+                "rgba(0, 120, 215, 0.8)",
+                "rgba(112, 48, 160, 0.8)",
+                "rgba(0, 176, 80, 0.8)"
+              ]
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false
+        }
+      });
+    }
+
+    function renderBarChart(canvasId, labels, values, datasetLabel) {
+      if (!labels.length) return;
+      const ctx = document.getElementById(canvasId).getContext("2d");
+      new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: datasetLabel,
+              data: values,
+              backgroundColor: "rgba(0, 32, 96, 0.8)"
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              beginAtZero: true
+            }
+          }
+        }
+      });
+    }
+
+    // При загрузке страницы — один раз подгружаем stats.json
+    loadStats();
+  </script>
+</body>
+</html>
